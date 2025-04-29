@@ -1,0 +1,600 @@
+{% extends "base.html" %}
+
+{% block title %}Setup & Run - Maintenance Optimization System{% endblock %}
+
+{% block content %}
+<h2 class="mb-4">Setup & Run Simulation</h2>
+
+<div class="row">
+    <div class="col-md-5">
+        <!-- Parameter Configuration Panel -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <ul class="nav nav-tabs card-header-tabs" role="tablist">
+                    <li class="nav-item">
+                        <a class="nav-link active" id="system-tab" data-bs-toggle="tab" href="#system" role="tab">System Parameters</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" id="cost-tab" data-bs-toggle="tab" href="#cost" role="tab">Cost Parameters</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" id="components-tab" data-bs-toggle="tab" href="#components" role="tab">Components</a>
+                    </li>
+                </ul>
+            </div>
+            <div class="card-body">
+                <div class="tab-content">
+                    <!-- System Parameters Tab -->
+                    <div class="tab-pane fade show active" id="system" role="tabpanel">
+                        <form id="system-form">
+                            <div class="mb-3">
+                                <label for="C" class="form-label">Number of Components (C):</label>
+                                <input type="number" class="form-control" id="C" name="C" min="1" max="10" value="3">
+                            </div>
+                            <div class="mb-3">
+                                <label for="K" class="form-label">Maximum Deterioration Level (K):</label>
+                                <input type="number" class="form-control" id="K" name="K" min="2" max="15" value="3">
+                            </div>
+                            <div class="mb-3">
+                                <label for="alpha" class="form-label">Degradation Probability (1-α):</label>
+                                <input type="number" class="form-control" id="alpha" name="alpha" min="0.05" max="0.95" step="0.05" value="0.25">
+                            </div>
+                            <div class="mb-3">
+                                <label for="yellow_threshold" class="form-label">Yellow Signal Threshold:</label>
+                                <input type="number" class="form-control" id="yellow_threshold" name="yellow_threshold" min="1" max="20" value="5">
+                            </div>
+                            <div class="mb-3">
+                                <label for="simulation_steps" class="form-label">Simulation Steps:</label>
+                                <input type="number" class="form-control" id="simulation_steps" name="simulation_steps" min="50" max="1000" step="50" value="100">
+                            </div>
+                        </form>
+                    </div>
+                    
+                    <!-- Cost Parameters Tab -->
+                    <div class="tab-pane fade" id="cost" role="tabpanel">
+                        <form id="cost-form">
+                            <div class="mb-3">
+                                <label for="c1" class="form-label">Preventive Maintenance Cost (c₁):</label>
+                                <input type="number" class="form-control" id="c1" name="c1" min="50" max="500" step="10" value="100">
+                            </div>
+                            <div class="mb-3">
+                                <label for="c2" class="form-label">Corrective Maintenance Cost (c₂):</label>
+                                <input type="number" class="form-control" id="c2" name="c2" min="100" max="1000" step="10" value="200">
+                            </div>
+                            <div class="mb-3">
+                                <label for="ct" class="form-label">Transfer Cost per Component (cₜ):</label>
+                                <input type="number" class="form-control" id="ct" name="ct" min="10" max="100" step="5" value="30">
+                            </div>
+                            <div class="mb-3">
+                                <label for="cr" class="form-label">Replacement Cost per Component (cᵣ):</label>
+                                <input type="number" class="form-control" id="cr" name="cr" min="20" max="200" step="5" value="50">
+                            </div>
+                            <div class="mb-3">
+                                <label for="cs" class="form-label">Shortage Cost per Component (cₛ):</label>
+                                <input type="number" class="form-control" id="cs" name="cs" min="20" max="200" step="5" value="60">
+                            </div>
+                            <div class="mb-3">
+                                <label for="ce" class="form-label">Excess Cost per Component (cₑ):</label>
+                                <input type="number" class="form-control" id="ce" name="ce" min="10" max="100" step="5" value="30">
+                            </div>
+                        </form>
+                    </div>
+                    
+                    <!-- Components Tab -->
+                    <div class="tab-pane fade" id="components" role="tabpanel">
+                        <div class="alert alert-info mb-3">
+                            <strong>Note:</strong> Apply system parameters first to configure components.
+                        </div>
+                        <div id="component-params-container">
+                            <!-- Component params will be dynamically inserted here -->
+                            <div class="text-center">
+                                <button class="btn btn-primary" id="apply-system-params">Apply System Parameters</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="card-footer">
+                <div class="d-grid gap-2">
+                    <button class="btn btn-primary" id="save-parameters">Save Parameters</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="card mb-4">
+            <div class="card-header">Actions</div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <button class="btn btn-success mb-2" id="calculate-policy">Calculate Optimal Policy</button>
+                    <button class="btn btn-success mb-2" id="run-simulation">Run Simulation</button>
+                    <button class="btn btn-warning" id="reset-simulation">Reset</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-7">
+        <!-- Results Panel -->
+        <div class="card mb-4">
+            <div class="card-header">Simulation Results</div>
+            <div class="card-body">
+                <!-- Status -->
+                <div class="row mb-3">
+                    <div class="col-md-3">
+                        <strong>Status:</strong>
+                    </div>
+                    <div class="col-md-9">
+                        <span id="status-label" class="text-primary">Ready</span>
+                    </div>
+                </div>
+                
+                <!-- Progress Bar -->
+                <div class="progress mb-4">
+                    <div id="progress-bar" class="progress-bar" role="progressbar" style="width: 0%"></div>
+                </div>
+                
+                <!-- Metrics -->
+                <div class="card mb-3">
+                    <div class="card-header">Key Performance Metrics</div>
+                    <div class="card-body">
+                        <table class="table table-striped">
+                            <tbody>
+                                <tr>
+                                    <th scope="row" style="width: 60%">Total Cost:</th>
+                                    <td id="total-cost">N/A</td>
+                                </tr>
+                                <tr>
+                                    <th scope="row">Uptime Percentage:</th>
+                                    <td id="uptime-percentage">N/A</td>
+                                </tr>
+                                <tr>
+                                    <th scope="row">Mean Time Between Failures:</th>
+                                    <td id="mtbf">N/A</td>
+                                </tr>
+                                <tr>
+                                    <th scope="row">Number of Interventions:</th>
+                                    <td id="intervention-count">N/A</td>
+                                </tr>
+                                <tr>
+                                    <th scope="row">Preventive Maintenance Count:</th>
+                                    <td id="preventive-count">N/A</td>
+                                </tr>
+                                <tr>
+                                    <th scope="row">Corrective Maintenance Count:</th>
+                                    <td id="corrective-count">N/A</td>
+                                </tr>
+                                <tr>
+                                    <th scope="row">Yellow Signal Threshold Reached:</th>
+                                    <td id="yellow-threshold-reached">N/A</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <!-- Log -->
+                <div class="card">
+                    <div class="card-header">Simulation Log</div>
+                    <div class="card-body">
+                        <div id="log-container" class="log-container"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    $(document).ready(function() {
+        // Global variables
+        let componentParams = [];
+        
+        // Apply system parameters button
+        $('#apply-system-params').click(function() {
+            const systemParams = getSystemParams();
+            updateComponentParams(systemParams);
+        });
+        
+        // Save parameters button
+        $('#save-parameters').click(function() {
+            saveParameters();
+        });
+        
+        // Calculate optimal policy button
+        $('#calculate-policy').click(function() {
+            calculateOptimalPolicy();
+        });
+        
+        // Run simulation button
+        $('#run-simulation').click(function() {
+            runSimulation();
+        });
+        
+        // Reset button
+        $('#reset-simulation').click(function() {
+            resetSimulation();
+        });
+        
+        // Helper function to get system parameters
+        function getSystemParams() {
+            return {
+                C: parseInt($('#C').val()),
+                K: parseInt($('#K').val()),
+                alpha: parseFloat($('#alpha').val()),
+                yellow_threshold: parseInt($('#yellow_threshold').val()),
+                simulation_steps: parseInt($('#simulation_steps').val())
+            };
+        }
+        
+        // Helper function to get cost parameters
+        function getCostParams() {
+            return {
+                c1: parseFloat($('#c1').val()),
+                c2: parseFloat($('#c2').val()),
+                ct: parseFloat($('#ct').val()),
+                cr: parseFloat($('#cr').val()),
+                cs: parseFloat($('#cs').val()),
+                ce: parseFloat($('#ce').val())
+            };
+        }
+        
+        // Update component parameters
+        function updateComponentParams(params) {
+            // Update status
+            updateStatus("Updating component parameters...", "primary");
+            
+            // Get parameters
+            const numComponents = params.C;
+            const maxDeteriorationLevel = params.K;
+            const alpha = params.alpha;
+            
+            // Create request data
+            const requestData = {
+                C: numComponents,
+                K: maxDeteriorationLevel,
+                alpha: alpha,
+                yellow_threshold: params.yellow_threshold,
+                simulation_steps: params.simulation_steps,
+                ...getCostParams()
+            };
+            
+            // Send request to server
+            $.ajax({
+                url: '/setup',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(requestData),
+                success: function(response) {
+                    if (response.status === 'success') {
+                        componentParams = response.component_params;
+                        displayComponentParams(componentParams);
+                        updateStatus("Component parameters updated", "success");
+                    } else {
+                        updateStatus("Failed to update component parameters", "danger");
+                    }
+                },
+                error: function(error) {
+                    console.error("Error:", error);
+                    updateStatus("Error updating component parameters", "danger");
+                }
+            });
+        }
+        
+        // Display component parameters
+        function displayComponentParams(params) {
+            const container = $('#component-params-container');
+            container.empty();
+            
+            if (params.length === 0) {
+                container.html('<div class="alert alert-warning">No component parameters available.</div>');
+                return;
+            }
+            
+            // Create table header
+            let html = `
+            <table class="table table-bordered">
+                <thead>
+                    <tr>
+                        <th>Component Name</th>
+                        <th>Failure Threshold (K)</th>
+                        <th>Degradation Prob (P)</th>
+                    </tr>
+                </thead>
+                <tbody>
+            `;
+            
+            // Add rows for each component
+            params.forEach((comp, index) => {
+                html += `
+                <tr>
+                    <td>
+                        <input type="text" class="form-control comp-name" data-index="${index}" 
+                               value="${comp.name}">
+                    </td>
+                    <td>
+                        <input type="number" class="form-control comp-k" data-index="${index}" 
+                               min="1" max="${$('#K').val()}" value="${comp.k}">
+                    </td>
+                    <td>
+                        <input type="number" class="form-control comp-p" data-index="${index}" 
+                               min="0.01" max="1.0" step="0.01" value="${comp.p}">
+                    </td>
+                </tr>
+                `;
+            });
+            
+            html += `
+                </tbody>
+            </table>
+            <div class="d-grid gap-2">
+                <button class="btn btn-primary" id="save-component-params">Save Component Parameters</button>
+            </div>
+            `;
+            
+            container.html(html);
+            
+            // Bind event to save component parameters button
+            $('#save-component-params').click(function() {
+                saveComponentParams();
+            });
+        }
+        
+        // Save component parameters
+        function saveComponentParams() {
+            updateStatus("Saving component parameters...", "primary");
+            
+            // Collect updated component parameters
+            const updatedParams = [];
+            
+            for (let i = 0; i < componentParams.length; i++) {
+                updatedParams.push({
+                    name: $(`.comp-name[data-index="${i}"]`).val(),
+                    k: parseInt($(`.comp-k[data-index="${i}"]`).val()),
+                    p: parseFloat($(`.comp-p[data-index="${i}"]`).val()),
+                    current_state: 0
+                });
+            }
+            
+            // Update local copy
+            componentParams = updatedParams;
+            
+            // Send to server
+            $.ajax({
+                url: '/component_params',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ component_params: componentParams }),
+                success: function(response) {
+                    if (response.status === 'success') {
+                        updateStatus("Component parameters saved", "success");
+                    } else {
+                        updateStatus("Failed to save component parameters", "danger");
+                    }
+                },
+                error: function(error) {
+                    console.error("Error:", error);
+                    updateStatus("Error saving component parameters", "danger");
+                }
+            });
+        }
+        
+        // Save all parameters
+        function saveParameters() {
+            updateStatus("Saving parameters...", "primary");
+            
+            const systemParams = getSystemParams();
+            const costParams = getCostParams();
+            
+            // Create request data
+            const requestData = {
+                ...systemParams,
+                ...costParams,
+                component_params: componentParams
+            };
+            
+            // Send request to server
+            $.ajax({
+                url: '/setup',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(requestData),
+                success: function(response) {
+                    if (response.status === 'success') {
+                        componentParams = response.component_params;
+                        displayComponentParams(componentParams);
+                        updateStatus("Parameters saved successfully", "success");
+                    } else {
+                        updateStatus("Failed to save parameters", "danger");
+                    }
+                },
+                error: function(error) {
+                    console.error("Error:", error);
+                    updateStatus("Error saving parameters", "danger");
+                }
+            });
+        }
+        
+        // Calculate optimal policy
+        function calculateOptimalPolicy() {
+            updateStatus("Calculating optimal policy...", "primary");
+            
+            // Start progress animation
+            animateProgress(0, 100, 2000);
+            
+            // Send request to server
+            $.ajax({
+                url: '/calculate_policy',
+                type: 'POST',
+                success: function(response) {
+                    if (response.status === 'success') {
+                        updateStatus("Maintenance rules set", "success");
+                        
+                        // Display alert
+                        const alert = `
+                        <div class="alert alert-success alert-dismissible fade show mt-3" role="alert">
+                            Policy calculation successful. Go to the "Optimal Policy" tab to view details.
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                        `;
+                        $('.card-body:first').prepend(alert);
+                    } else {
+                        updateStatus("Failed to calculate policy", "danger");
+                    }
+                },
+                error: function(error) {
+                    console.error("Error:", error);
+                    updateStatus("Error calculating policy", "danger");
+                }
+            });
+        }
+        
+        // Run simulation
+        function runSimulation() {
+            updateStatus("Running simulation...", "primary");
+            
+            // Clear log
+            $('#log-container').empty();
+            
+            // Start progress animation
+            animateProgress(0, 100, 5000);
+            
+            // Send request to server
+            $.ajax({
+                url: '/run_simulation',
+                type: 'POST',
+                success: function(response) {
+                    if (response.status === 'success') {
+                        updateStatus("Simulation complete", "success");
+                        
+                        // Update metrics
+                        const metrics = response.data.metrics;
+                        $('#total-cost').text(metrics.total_cost);
+                        $('#uptime-percentage').text(metrics.uptime_percentage + "%");
+                        $('#mtbf').text(metrics.mtbf + " steps");
+                        $('#intervention-count').text(metrics.intervention_count);
+                        $('#preventive-count').text(metrics.preventive_maintenance_count);
+                        $('#corrective-count').text(metrics.corrective_maintenance_count);
+                        $('#yellow-threshold-reached').text(metrics.yellow_threshold_reached_count);
+                        
+                        // Update log
+                        const logs = response.data.results.logs;
+                        const logContainer = $('#log-container');
+                        logContainer.empty();
+                        
+                        logs.forEach(log => {
+                            logContainer.append(`<div>${log}</div>`);
+                        });
+                        
+                        // Auto-scroll to bottom of log
+                        logContainer.scrollTop(logContainer[0].scrollHeight);
+                        
+                        // Display alert for visualizations
+                        const alert = `
+                        <div class="alert alert-success alert-dismissible fade show mt-3" role="alert">
+                            Simulation completed successfully. Go to the "Visualization" tab to view results.
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                        `;
+                        $('.card-body:first').prepend(alert);
+                    } else {
+                        updateStatus("Simulation failed", "danger");
+                    }
+                },
+                error: function(error) {
+                    console.error("Error:", error);
+                    updateStatus("Error running simulation", "danger");
+                }
+            });
+        }
+        
+        // Reset simulation
+        function resetSimulation() {
+            updateStatus("Resetting simulation...", "primary");
+            
+            // Clear metrics
+            $('#total-cost').text("N/A");
+            $('#uptime-percentage').text("N/A");
+            $('#mtbf').text("N/A");
+            $('#intervention-count').text("N/A");
+            $('#preventive-count').text("N/A");
+            $('#corrective-count').text("N/A");
+            $('#yellow-threshold-reached').text("N/A");
+            
+            // Clear log
+            $('#log-container').empty();
+            
+            // Reset progress bar
+            $('#progress-bar').css('width', '0%');
+            
+            // Send request to server
+            $.ajax({
+                url: '/reset',
+                type: 'POST',
+                success: function(response) {
+                    if (response.status === 'success') {
+                        updateStatus("Simulation reset", "success");
+                        
+                        // Remove any alerts
+                        $('.alert').remove();
+                    } else {
+                        updateStatus("Failed to reset simulation", "danger");
+                    }
+                },
+                error: function(error) {
+                    console.error("Error:", error);
+                    updateStatus("Error resetting simulation", "danger");
+                }
+            });
+        }
+        
+        // Update status label
+        function updateStatus(message, type) {
+            const statusLabel = $('#status-label');
+            statusLabel.text(message);
+            
+            // Reset classes
+            statusLabel.removeClass('text-primary text-success text-danger text-warning');
+            
+            // Add appropriate class
+            switch (type) {
+                case 'primary':
+                    statusLabel.addClass('text-primary');
+                    break;
+                case 'success':
+                    statusLabel.addClass('text-success');
+                    break;
+                case 'danger':
+                    statusLabel.addClass('text-danger');
+                    break;
+                case 'warning':
+                    statusLabel.addClass('text-warning');
+                    break;
+            }
+        }
+        
+        // Animate progress bar
+        function animateProgress(start, end, duration) {
+            const progressBar = $('#progress-bar');
+            const startTime = Date.now();
+            
+            function updateProgress() {
+                const currentTime = Date.now();
+                const elapsed = currentTime - startTime;
+                const progress = start + (end - start) * (elapsed / duration);
+                
+                if (elapsed < duration) {
+                    progressBar.css('width', `${progress}%`);
+                    requestAnimationFrame(updateProgress);
+                } else {
+                    progressBar.css('width', `${end}%`);
+                }
+            }
+            
+            updateProgress();
+        }
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+
+{% block title %}Optimal Policy - Maintenance Optimization System{% endblock %}
+
+{% block content %}
+<h2 class="mb-4">Maintenance Policy</h2>
+
+{% if no_policy %}
+<div class="alert alert-warning">
+    <strong>No policy has been calculated yet.</strong> Please calculate an optimal policy first from the <a href="/setup">Setup & Run</a> page.
+</div>
+{% else %}
+<div class="row">
+    <div class="col-md-12">
+        <div class="card mb-4">
+            <div class="card-header">Maintenance Rules</div>
+            <div class="card-body">
+                <div class="mb-4">
+                    <pre class="bg-light p-3 rounded">{{ rules_text }}</pre>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">Policy Visualization</div>
+            <div class="card-body text-center">
+                <div class="visualization-container">
+                    <img src="data:image/png;base64,{{ policy_plot }}" alt="Maintenance Policy Visualization" class="img-fluid">
+                </div>
+                <p class="mt-3">
+                    This diagram shows the state transitions and maintenance decision rules. 
+                    Green circles represent perfect condition, yellow circles represent degraded condition, 
+                    and red circles represent component failure.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">Policy Description</div>
+            <div class="card-body">
+                <h5>Signal-Based Maintenance Strategy</h5>
+                <p>
+                    The maintenance policy implemented is based on the current signal state of the system:
+                </p>
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="card mb-3 border-success">
+                            <div class="card-header bg-success text-white">Green Signal (0)</div>
+                            <div class="card-body">
+                                <p>All components are in perfect condition.</p>
+                                <p><strong>Action:</strong> No maintenance is performed.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card mb-3 border-warning">
+                            <div class="card-header bg-warning">Yellow Signal (1)</div>
+                            <div class="card-body">
+                                <p>Some components are degraded but none have failed.</p>
+                                <p><strong>Action:</strong> Preventive maintenance is performed if the yellow signal persists for a threshold number of consecutive time steps.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card mb-3 border-danger">
+                            <div class="card-header bg-danger text-white">Red Signal (2)</div>
+                            <div class="card-body">
+                                <p>At least one component has reached maximum deterioration (failed).</p>
+                                <p><strong>Action:</strong> Immediate corrective maintenance is performed on all components.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <h5 class="mt-4">Benefits of this Policy</h5>
+                <ul>
+                    <li>Balances preventive and corrective maintenance to optimize total cost</li>
+                    <li>Minimizes system downtime by addressing potential failures before they occur</li>
+                    <li>Simple to implement and understand</li>
+                    <li>Adapts to different component degradation rates</li>
+                </ul>
+                
+                <div class="alert alert-info mt-4">
+                    <h5 class="alert-heading">Try Different Thresholds</h5>
+                    <p>You can experiment with different yellow signal thresholds to find the optimal balance between preventive and corrective maintenance for your specific system configuration.</p>
+                    <hr>
+                    <p class="mb-0">Return to the <a href="/setup" class="alert-link">Setup & Run</a> page to adjust parameters and run more simulations.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

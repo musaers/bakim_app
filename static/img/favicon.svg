@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- Base Circle -->
+  <circle cx="50" cy="50" r="45" fill="#f8f9fa" stroke="#0d6efd" stroke-width="2" />
+  
+  <!-- Gears -->
+  <g fill="#0d6efd">
+    <!-- Main Gear -->
+    <path d="M50,25 L53,32 L60,30 L58,38 L65,40 L60,46 L65,52 L58,54 L60,62 L53,60 L50,67 L47,60 L40,62 L42,54 L35,52 L40,46 L35,40 L42,38 L40,30 L47,32 Z" />
+    <!-- Center circle -->
+    <circle cx="50" cy="46" r="8" />
+  </g>
+  
+  <!-- Graph Line -->
+  <polyline points="20,75 30,65 40,70 50,60 60,65 70,55 80,60" stroke="#198754" stroke-width="3" fill="none" />
+  
+  <!-- Signal Dots -->
+  <circle cx="30" cy="65" r="3" fill="#198754" />
+  <circle cx="50" cy="60" r="3" fill="#ffc107" />
+  <circle cx="70" cy="55" r="3" fill="#dc3545" />
+</svg>

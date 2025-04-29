@@ -1,0 +1,213 @@
+{% extends "base.html" %}
+
+{% block title %}Home - Maintenance Optimization System{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<div class="jumbotron">
+    <div class="row align-items-center">
+        <div class="col-md-8">
+            <h1 class="display-4">Optimal Maintenance Intervention Simulator</h1>
+            <p class="lead">
+                Simulate and analyze maintenance strategies for multi-component systems with degradation.
+            </p>
+            <hr class="my-4">
+            <p>
+                This web application helps you optimize maintenance policies for systems with multiple components.
+                Simulate different maintenance strategies, visualize degradation patterns, and analyze cost implications.
+            </p>
+            <div class="mt-4">
+                <a href="/setup" class="btn btn-primary btn-lg">
+                    <i class="fas fa-play me-2"></i> Get Started
+                </a>
+                <a href="#about" class="btn btn-outline-secondary btn-lg ms-2">
+                    <i class="fas fa-info-circle me-2"></i> Learn More
+                </a>
+            </div>
+        </div>
+        <div class="col-md-4 d-none d-md-block text-center">
+            <img src="{{ url_for('static', filename='img/logo.svg') }}" alt="Maintenance Optimization" class="img-fluid" style="max-width: 250px;">
+        </div>
+    </div>
+</div>
+
+<!-- Feature Cards -->
+<div class="row mt-5">
+    <div class="col-md-4 mb-4">
+        <div class="card h-100 shadow-sm">
+            <div class="card-header bg-primary text-white text-center">
+                <i class="fas fa-cogs fa-2x my-3"></i>
+            </div>
+            <div class="card-body">
+                <h5 class="card-title">Setup & Run</h5>
+                <p class="card-text">Configure system parameters, cost settings, and component properties. Run simulations to analyze maintenance strategies.</p>
+            </div>
+            <div class="card-footer bg-white border-top-0">
+                <a href="/setup" class="btn btn-outline-primary d-block">
+                    <i class="fas fa-wrench me-2"></i> Configure System
+                </a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 mb-4">
+        <div class="card h-100 shadow-sm">
+            <div class="card-header bg-success text-white text-center">
+                <i class="fas fa-chart-line fa-2x my-3"></i>
+            </div>
+            <div class="card-body">
+                <h5 class="card-title">Visualizations</h5>
+                <p class="card-text">View component states, degradation patterns, and cost analysis charts. Analyze system performance through interactive visualizations.</p>
+            </div>
+            <div class="card-footer bg-white border-top-0">
+                <a href="/visualization" class="btn btn-outline-success d-block">
+                    <i class="fas fa-chart-bar me-2"></i> View Visualizations
+                </a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 mb-4">
+        <div class="card h-100 shadow-sm">
+            <div class="card-header bg-info text-white text-center">
+                <i class="fas fa-clipboard-list fa-2x my-3"></i>
+            </div>
+            <div class="card-body">
+                <h5 class="card-title">Optimal Policy</h5>
+                <p class="card-text">Understand the maintenance intervention policy rules and thresholds. Learn how to optimize maintenance decisions.</p>
+            </div>
+            <div class="card-footer bg-white border-top-0">
+                <a href="/policy" class="btn btn-outline-info d-block">
+                    <i class="fas fa-search me-2"></i> View Policy
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- About Section -->
+<div class="row mt-5" id="about">
+    <div class="col-md-12">
+        <div class="card shadow-sm">
+            <div class="card-header">
+                <h3 class="mb-0"><i class="fas fa-info-circle me-2"></i> About Maintenance Optimization</h3>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-8">
+                        <p>
+                            Maintenance optimization involves determining the optimal schedule and strategy for maintaining equipment
+                            to minimize costs and downtime. This system simulates a scenario where multiple components can degrade over time,
+                            and maintenance decisions need to be made based on the system's status signals.
+                        </p>
+                        
+                        <h4 class="mt-4">The Signal System</h4>
+                        <div class="row mb-4">
+                            <div class="col-md-4">
+                                <div class="card border-success mb-3">
+                                    <div class="card-header bg-success text-white">Green Signal (0)</div>
+                                    <div class="card-body">
+                                        <p class="card-text">All components are in perfect condition. No maintenance is required.</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card border-warning mb-3">
+                                    <div class="card-header bg-warning">Yellow Signal (1)</div>
+                                    <div class="card-body">
+                                        <p class="card-text">Some components are degraded but not failed. Preventive maintenance may be required.</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card border-danger mb-3">
+                                    <div class="card-header bg-danger text-white">Red Signal (2)</div>
+                                    <div class="card-body">
+                                        <p class="card-text">At least one component has failed. Immediate corrective maintenance is required.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <h4>Maintenance Strategies</h4>
+                        <p>
+                            Use this simulator to experiment with different parameters and understand the trade-offs
+                            between preventive and corrective maintenance strategies. Key factors include:
+                        </p>
+                        <ul class="list-group list-group-flush mb-4">
+                            <li class="list-group-item"><i class="fas fa-balance-scale me-2 text-primary"></i> Cost balance between preventive and corrective maintenance</li>
+                            <li class="list-group-item"><i class="fas fa-clock me-2 text-primary"></i> Optimal timing for preventive maintenance</li>
+                            <li class="list-group-item"><i class="fas fa-random me-2 text-primary"></i> Component degradation probabilities and patterns</li>
+                            <li class="list-group-item"><i class="fas fa-chart-line me-2 text-primary"></i> System performance metrics and cost analysis</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card mb-4">
+                            <div class="card-header bg-light">
+                                <h5 class="mb-0">Quick Start Guide</h5>
+                            </div>
+                            <div class="card-body">
+                                <ol class="list-group list-group-numbered">
+                                    <li class="list-group-item d-flex justify-content-between align-items-start">
+                                        <div class="ms-2 me-auto">
+                                            <div class="fw-bold">Configure Parameters</div>
+                                            Set system and cost parameters
+                                        </div>
+                                    </li>
+                                    <li class="list-group-item d-flex justify-content-between align-items-start">
+                                        <div class="ms-2 me-auto">
+                                            <div class="fw-bold">Calculate Policy</div>
+                                            Generate maintenance rules
+                                        </div>
+                                    </li>
+                                    <li class="list-group-item d-flex justify-content-between align-items-start">
+                                        <div class="ms-2 me-auto">
+                                            <div class="fw-bold">Run Simulation</div>
+                                            Execute the simulation model
+                                        </div>
+                                    </li>
+                                    <li class="list-group-item d-flex justify-content-between align-items-start">
+                                        <div class="ms-2 me-auto">
+                                            <div class="fw-bold">Analyze Results</div>
+                                            View visualizations and metrics
+                                        </div>
+                                    </li>
+                                </ol>
+                            </div>
+                            <div class="card-footer bg-white">
+                                <a href="/setup" class="btn btn-primary d-block">
+                                    <i class="fas fa-arrow-right me-2"></i> Start Now
+                                </a>
+                            </div>
+                        </div>
+                        
+                        <div class="card">
+                            <div class="card-header bg-light">
+                                <h5 class="mb-0">Key Benefits</h5>
+                            </div>
+                            <ul class="list-group list-group-flush">
+                                <li class="list-group-item"><i class="fas fa-check-circle text-success me-2"></i> Optimize maintenance costs</li>
+                                <li class="list-group-item"><i class="fas fa-check-circle text-success me-2"></i> Reduce system downtime</li>
+                                <li class="list-group-item"><i class="fas fa-check-circle text-success me-2"></i> Extend component lifespan</li>
+                                <li class="list-group-item"><i class="fas fa-check-circle text-success me-2"></i> Improve system reliability</li>
+                                <li class="list-group-item"><i class="fas fa-check-circle text-success me-2"></i> Make data-driven decisions</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Call to Action -->
+<div class="row mt-5">
+    <div class="col-12 text-center">
+        <div class="p-5 bg-light rounded">
+            <h2>Ready to optimize your maintenance strategy?</h2>
+            <p class="lead">Get started with the simulation tool and discover the optimal maintenance policy for your system.</p>
+            <a href="/setup" class="btn btn-primary btn-lg mt-3">
+                <i class="fas fa-play me-2"></i> Launch Simulator
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

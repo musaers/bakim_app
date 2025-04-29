@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+
+{% block title %}Visualizations - Maintenance Optimization System{% endblock %}
+
+{% block content %}
+<h2 class="mb-4">Simulation Visualizations</h2>
+
+{% if no_data %}
+<div class="alert alert-warning">
+    <strong>No simulation data available.</strong> Please run a simulation first from the <a href="/setup">Setup & Run</a> page.
+</div>
+{% else %}
+<ul class="nav nav-tabs" id="visualization-tabs" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="component-states-tab" data-bs-toggle="tab" data-bs-target="#component-states" type="button" role="tab">Component States</button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="degradation-heatmap-tab" data-bs-toggle="tab" data-bs-target="#degradation-heatmap" type="button" role="tab">Degradation Heatmap</button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="cost-analysis-tab" data-bs-toggle="tab" data-bs-target="#cost-analysis" type="button" role="tab">Cost Analysis</button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="signal-history-tab" data-bs-toggle="tab" data-bs-target="#signal-history" type="button" role="tab">Signal Distribution</button>
+    </li>
+</ul>
+
+<div class="tab-content p-3 border border-top-0 rounded-bottom mb-4" id="visualization-tabs-content">
+    <!-- Component States Tab -->
+    <div class="tab-pane fade show active" id="component-states" role="tabpanel">
+        <h4>System Signal Over Time</h4>
+        <p>This visualization shows the system signal (Green, Yellow, or Red) over time, with maintenance events marked by vertical blue lines.</p>
+        <div class="visualization-container">
+            <img src="data:image/png;base64,{{ simulation_results.plots.component_state }}" alt="Component States">
+        </div>
+    </div>
+    
+    <!-- Degradation Heatmap Tab -->
+    <div class="tab-pane fade" id="degradation-heatmap" role="tabpanel">
+        <h4>Component Degradation Heatmap</h4>
+        <p>This heatmap shows the degradation level of each component over time, normalized to their failure thresholds. Green represents perfect condition, yellow represents degradation, and red represents near-failure or failure states.</p>
+        <div class="visualization-container">
+            <img src="data:image/png;base64,{{ simulation_results.plots.heatmap }}" alt="Degradation Heatmap">
+        </div>
+    </div>
+    
+    <!-- Cost Analysis Tab -->
+    <div class="tab-pane fade" id="cost-analysis" role="tabpanel">
+        <h4>Maintenance Cost Analysis</h4>
+        <p>The top chart shows the breakdown of costs by type at each time step. The bottom chart shows the cumulative cost over time, with maintenance events marked by vertical red lines.</p>
+        <div class="visualization-container">
+            <img src="data:image/png;base64,{{ simulation_results.plots.cost_analysis }}" alt="Cost Analysis">
+        </div>
+    </div>
+    
+    <!-- Signal History Tab -->
+    <div class="tab-pane fade" id="signal-history" role="tabpanel">
+        <h4>Signal Distribution</h4>
+        <p>This pie chart shows the distribution of signals (Green, Yellow, Red) throughout the simulation.</p>
+        <div class="visualization-container">
+            <img src="data:image/png;base64,{{ simulation_results.plots.signal_history }}" alt="Signal Distribution">
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">Simulation Summary</div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <table class="table table-striped">
+                    <tbody>
+                        <tr>
+                            <th scope="row">Total Cost:</th>
+                            <td>{{ simulation_results.metrics.total_cost }}</td>
+                        </tr>
+                        <tr>
+                            <th scope="row">Uptime Percentage:</th>
+                            <td>{{ simulation_results.metrics.uptime_percentage }}%</td>
+                        </tr>
+                        <tr>
+                            <th scope="row">Mean Time Between Failures:</th>
+                            <td>{{ simulation_results.metrics.mtbf }} steps</td>
+                        </tr>
+                        <tr>
+                            <th scope="row">Number of Interventions:</th>
+                            <td>{{ simulation_results.metrics.intervention_count }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="col-md-6">
+                <table class="table table-striped">
+                    <tbody>
+                        <tr>
+                            <th scope="row">Preventive Maintenance Count:</th>
+                            <td>{{ simulation_results.metrics.preventive_maintenance_count }}</td>
+                        </tr>
+                        <tr>
+                            <th scope="row">Corrective Maintenance Count:</th>
+                            <td>{{ simulation_results.metrics.corrective_maintenance_count }}</td>
+                        </tr>
+                        <tr>
+                            <th scope="row">Failures:</th>
+                            <td>{{ simulation_results.metrics.failure_count }}</td>
+                        </tr>
+                        <tr>
+                            <th scope="row">Yellow Threshold Reached:</th>
+                            <td>{{ simulation_results.metrics.yellow_threshold_reached_count }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+            <a href="/setup" class="btn btn-primary">Run Another Simulation</a>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
