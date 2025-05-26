@@ -34,7 +34,8 @@
                 <p class="mt-3">
                     This diagram shows the state transitions and maintenance decision rules. 
                     Green circles represent perfect condition, yellow circles represent degraded condition, 
-                    and red circles represent component failure.
+                    and red circles represent component failure. Blue lines indicate preventive maintenance,
+                    while red lines indicate corrective maintenance.
                 </p>
             </div>
         </div>
@@ -74,7 +75,180 @@
                             <div class="card-header bg-danger text-white">Red Signal (2)</div>
                             <div class="card-body">
                                 <p>At least one component has reached maximum deterioration (failed).</p>
-                                <p><strong>Action:</strong> Immediate corrective maintenance is performed on all components.</p>
+                                <p><strong>Action:</strong> Immediate corrective maintenance is performed.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <h5 class="mt-4">Maintenance Component Selection</h5>
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <div class="row align-items-center">
+                            <div class="col-md-8">
+                                <p>When maintenance is performed, the system selects components based on the configured policy:</p>
+                                <ul>
+                                    <li><strong>All Components:</strong> Take all components for maintenance, regardless of degradation status.</li>
+                                    <li><strong>Only Degraded Components:</strong> Take only the components that have experienced some degradation.</li>
+                                    <li><strong>Custom Number:</strong> Take a specific number of components for maintenance.</li>
+                                </ul>
+                                <p><strong>Important:</strong> After ANY maintenance operation (preventive or corrective), <span class="text-danger">ALL components are always restored to perfect condition</span>. The component selection only affects the cost calculation (transfer cost, replacement cost, shortage/excess costs), not the resulting component states.</p>
+                            </div>
+                            <div class="col-md-4 text-center">
+                                <i class="fas fa-tools fa-5x text-secondary"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <h5 class="mt-4">Cost Factors</h5>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="card mb-3">
+                            <div class="card-header bg-light">Fixed Costs</div>
+                            <ul class="list-group list-group-flush">
+                                <li class="list-group-item d-flex justify-content-between">
+                                    <span>Preventive Maintenance (c₁)</span>
+                                    <strong>{{ rules_text.split('Preventive Maintenance (Yellow-triggered): ')[1].split(' units')[0] }} units</strong>
+                                </li>
+                                <li class="list-group-item d-flex justify-content-between">
+                                    <span>Corrective Maintenance (c₂)</span>
+                                    <strong>{{ rules_text.split('Corrective Maintenance (Red-triggered): ')[1].split(' units')[0] }} units</strong>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card mb-3">
+                            <div class="card-header bg-light">Per-Component Costs</div>
+                            <ul class="list-group list-group-flush">
+                                <li class="list-group-item d-flex justify-content-between">
+                                    <span>Transfer Cost (cₜ)</span>
+                                    <strong>{{ rules_text.split('Transfer Cost per Component: ')[1].split(' units')[0] }} units</strong>
+                                </li>
+                                <li class="list-group-item d-flex justify-content-between">
+                                    <span>Replacement Cost (cᵣ)</span>
+                                    <strong>{{ rules_text.split('Replacement Cost per Component: ')[1].split(' units')[0] }} units</strong>
+                                </li>
+                                <li class="list-group-item d-flex justify-content-between">
+                                    <span>Shortage Cost (cₛ)</span>
+                                    <strong>{{ rules_text.split('Shortage Cost per Component: ')[1].split(' units')[0] }} units</strong>
+                                </li>
+                                <li class="list-group-item d-flex justify-content-between">
+                                    <span>Excess Cost (cₑ)</span>
+                                    <strong>{{ rules_text.split('Excess Cost per Component: ')[1].split(' units')[0] }} units</strong>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card mb-4">
+                    <div class="card-header bg-light">Cost Calculation Logic</div>
+                    <div class="card-body">
+                        <ol>
+                            <li><strong>Fixed Maintenance Cost:</strong> Applies once per maintenance operation (c₁ for preventive, c₂ for corrective)</li>
+                            <li><strong>Transfer Cost:</strong> Based on the number of components selected for maintenance (components × cₜ)</li>
+                            <li><strong>Replacement Cost:</strong> Only applies to degraded components that are actually replaced (degraded_components × cᵣ)</li>
+                            <li><strong>Shortage/Excess Cost:</strong> Penalties for insufficient or excess component selection
+                                <ul>
+                                    <li>If fewer components are selected than are degraded: (degraded - selected) × cₛ</li>
+                                    <li>If more components are selected than are degraded: (selected - degraded) × cₑ</li>
+                                </ul>
+                            </li>
+                        </ol>
+                    </div>
+                </div>
+                
+                <!-- Optimal Maintenance Policy Section -->
+                <div class="card mb-4">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">Optimal Maintenance Policy</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i> 
+                            The optimal maintenance policy has been calculated using mathematical optimization.
+                            This policy provides the minimum long-term cost for all possible system states.
+                        </div>
+                        
+                        <div class="mb-4">
+                            <h6 class="font-weight-bold">Optimal Intervention Strategy:</h6>
+                            <div class="bg-light p-3 rounded">
+                                {% if session.get('optimal_policy') and session.get('optimal_policy').get('success') %}
+                                    {% set policy = session.get('optimal_policy').get('policy') %}
+                                    
+                                    <div class="mb-3">
+                                        <strong>Optimal Policy Description:</strong>
+                                        <p>{{ policy.policy_description }}</p>
+                                    </div>
+                                    
+                                    {% if policy.yellow_interventions %}
+                                    <div class="mb-3">
+                                        <strong>Preventive (Yellow Signal) Interventions:</strong>
+                                        <ul class="list-group">
+                                            {% for intervention in policy.yellow_interventions %}
+                                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                Intervene with {{ intervention.components }} components when counter reaches {{ intervention.counter }}
+                                                <span class="badge bg-primary">Probability: {{ "%.3f"|format(intervention.probability) }}</span>
+                                            </li>
+                                            {% endfor %}
+                                        </ul>
+                                    </div>
+                                    {% endif %}
+                                    
+                                    {% if policy.red_interventions %}
+                                    <div class="mb-3">
+                                        <strong>Corrective (Red Signal) Interventions:</strong>
+                                        <ul class="list-group">
+                                            {% for intervention in policy.red_interventions %}
+                                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                Intervene with {{ intervention.components }} components when counter reaches {{ intervention.counter }}
+                                                <span class="badge bg-danger">Probability: {{ "%.3f"|format(intervention.probability) }}</span>
+                                            </li>
+                                            {% endfor %}
+                                        </ul>
+                                    </div>
+                                    {% endif %}
+                                    
+                                    <div class="row mt-3">
+                                        <div class="col-md-4">
+                                            <div class="card text-white bg-danger mb-3">
+                                                <div class="card-body text-center">
+                                                    <h5 class="card-title">Red State Probability</h5>
+                                                    <p class="card-text display-4">{{ "%.1f"|format(policy.down_probability * 100) }}%</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="card text-dark bg-warning mb-3">
+                                                <div class="card-body text-center">
+                                                    <h5 class="card-title">Preventive Maintenance Probability</h5>
+                                                    <p class="card-text display-4">{{ "%.1f"|format(policy.preventive_probability * 100) }}%</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="card text-white bg-success mb-3">
+                                                <div class="card-body text-center">
+                                                    <h5 class="card-title">Optimal Cost</h5>
+                                                    <p class="card-text display-4">{{ "%.2f"|format(policy.objective_value) }}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                {% else %}
+                                    <div class="alert alert-warning">
+                                        <i class="fas fa-exclamation-triangle me-2"></i>
+                                        Optimal policy could not be calculated. Possible reasons:
+                                        <ul>
+                                            <li>Gurobipy library may not be installed</li>
+                                            <li>An error occurred during calculation</li>
+                                            <li>The optimization problem could not be solved</li>
+                                        </ul>
+                                        Please check the console output for more information.
+                                    </div>
+                                {% endif %}
                             </div>
                         </div>
                     </div>
@@ -86,11 +260,12 @@
                     <li>Minimizes system downtime by addressing potential failures before they occur</li>
                     <li>Simple to implement and understand</li>
                     <li>Adapts to different component degradation rates</li>
+                    <li>Provides flexibility in selecting which components to maintain</li>
                 </ul>
                 
                 <div class="alert alert-info mt-4">
-                    <h5 class="alert-heading">Try Different Thresholds</h5>
-                    <p>You can experiment with different yellow signal thresholds to find the optimal balance between preventive and corrective maintenance for your specific system configuration.</p>
+                    <h5 class="alert-heading">Try Different Thresholds and Strategies</h5>
+                    <p>You can experiment with different yellow signal thresholds and component selection strategies to find the optimal balance between preventive and corrective maintenance for your specific system configuration.</p>
                     <hr>
                     <p class="mb-0">Return to the <a href="/setup" class="alert-link">Setup & Run</a> page to adjust parameters and run more simulations.</p>
                 </div>

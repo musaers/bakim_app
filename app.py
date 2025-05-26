@@ -11,6 +11,7 @@ import random
 import time
 import json
 import os
+import optimal_policy
 from flask_session import Session
 
 app = Flask(__name__)
@@ -24,8 +25,14 @@ class MaintenanceOptimizationSimulator:
         self.C = params.get('C', 3)  # Number of components
         self.K = params.get('K', 3)  # Maximum deterioration level
         self.alpha = params.get('alpha', 0.25)  # Prob. of degradation (1-alpha in paper)
+        
+        # Simulation parameters
         self.simulation_steps = params.get('simulation_steps', 100)
+        
+        # Policy parameters
         self.yellow_threshold = params.get('yellow_threshold', 5)  # Maximum acceptable yellow states
+        self.maintenance_components = params.get('maintenance_components', 'all')  # How many components to take for maintenance
+        self.custom_components_number = params.get('custom_components_number', 0)  # Custom number of components if specified
         
         # Cost parameters
         self.c1 = params.get('c1', 100)  # Preventive maintenance cost
@@ -43,7 +50,7 @@ class MaintenanceOptimizationSimulator:
         # Results placeholders
         self.optimal_policy = None
         self.simulation_results = None
-        self.maintenance_events = []
+        self.maintenance_events = []  # Will store tuples of (time, type)
         
     def update_component_params(self):
         """Update component parameters"""
@@ -154,27 +161,39 @@ class MaintenanceOptimizationSimulator:
             # Execute maintenance if needed
             if maintenance_needed:
                 self.intervention_count += 1
-                self.maintenance_events.append(t)
                 
                 # Count by type
                 if maintenance_type == "corrective":
                     self.corrective_maintenance_count += 1
                     maintenance_costs[t] = self.c2  # Corrective maintenance cost
+                    self.maintenance_events.append((t, "corrective"))
                 else:  # preventive
                     self.preventive_maintenance_count += 1
                     maintenance_costs[t] = self.c1  # Preventive maintenance cost
+                    self.maintenance_events.append((t, "preventive"))
                 
-                # For maintenance we take all components
-                action = C
+                # Determine how many components to take for maintenance
+                degraded_count = np.sum(current_states > 0)
+                
+                if self.maintenance_components == 'all':
+                    # Take all components (original behavior)
+                    action = C
+                elif self.maintenance_components == 'degraded_only':
+                    # Take only degraded components
+                    action = degraded_count
+                elif self.maintenance_components == 'custom':
+                    # Take the specified custom number
+                    action = min(self.custom_components_number, C)
+                else:
+                    # Default to all components
+                    action = C
                 
                 # Transfer cost
                 transfer_costs[t] = action * self.ct
                 
-                # Count actual degraded components
-                degraded_count = np.sum(current_states > 0)
-                
-                # Replacement cost
-                component_costs[t] = degraded_count * self.cr
+                # Replacement cost - only pay for actually degraded components
+                actual_replaced = min(action, degraded_count)
+                component_costs[t] = actual_replaced * self.cr
                 
                 # Shortage or excess cost
                 if action < degraded_count:
@@ -182,14 +201,15 @@ class MaintenanceOptimizationSimulator:
                 else:
                     excess_costs[t] = (action - degraded_count) * self.ce
                 
-                # Reset all components to perfect condition
+                # Reset ALL components to perfect condition, regardless of which ones were selected for maintenance
+                # This is a requirement of the system - after any maintenance, all components must be in perfect condition
                 current_states.fill(0)
                 
                 # Reset yellow counter after maintenance
                 yellow_counter = 0
                 
                 # Log maintenance action
-                logs.append(f"Time {t}: {maintenance_type.capitalize()} maintenance performed. Reset all components.")
+                logs.append(f"Time {t}: {maintenance_type.capitalize()} maintenance performed. {action} components selected for maintenance, {degraded_count} were actually degraded.")
             else:
                 # No intervention, degrade components according to their probabilities
                 for i in range(C):
@@ -246,19 +266,19 @@ class MaintenanceOptimizationSimulator:
         """Calculate performance metrics based on simulation results"""
         # Uptime percentage
         uptime_percentage = ((simulation_steps - self.downtime_steps) / simulation_steps) * 100
-        
+            
         # Mean time between failures (MTBF)
         if self.failure_count > 0:
             mtbf = simulation_steps / self.failure_count
         else:
             mtbf = simulation_steps  # No failures
-        
+            
         # Total cost
         if self.simulation_results:
             total_cost = self.simulation_results['costs']['cumulative'][-1]
         else:
             total_cost = 0
-        
+            
         # Return metrics
         metrics = {
             'total_cost': round(total_cost, 2),
@@ -270,11 +290,11 @@ class MaintenanceOptimizationSimulator:
             'failure_count': self.failure_count,
             'yellow_threshold_reached_count': self.simulation_results['yellow_threshold_reached_count'] if self.simulation_results else 0
         }
-        
+            
         return metrics
 
     def generate_component_state_plot(self):
-        """Generate plot for component states"""
+        """Generate plot for component states with different colors for maintenance types"""
         if not self.simulation_results:
             return None
             
@@ -298,15 +318,22 @@ class MaintenanceOptimizationSimulator:
                                    color=color, label=f"{label} ({signal})")
                 legend_elements.append(points)
         
-        # Add maintenance event line to legend if there are any events
-        if maintenance_events:
-            line = ax.axvline(x=maintenance_events[0], color='blue', linestyle='-', alpha=0.5, 
-                             label='Maintenance')
-            legend_elements.append(line)
-            
-            # Add the rest of maintenance events without adding to legend
-            for event in maintenance_events[1:]:
-                ax.axvline(x=event, color='blue', linestyle='-', alpha=0.5)
+        # Add maintenance event lines with different colors based on type
+        prev_lines = {"corrective": None, "preventive": None}
+        
+        for event_time, event_type in maintenance_events:
+            if event_type == "corrective":
+                line = ax.axvline(x=event_time, color='darkred', linestyle='-', alpha=0.7, 
+                                  label='Corrective Maintenance' if prev_lines["corrective"] is None else "")
+                if prev_lines["corrective"] is None:
+                    prev_lines["corrective"] = line
+                    legend_elements.append(line)
+            else:  # preventive
+                line = ax.axvline(x=event_time, color='blue', linestyle='-', alpha=0.7, 
+                                  label='Preventive Maintenance' if prev_lines["preventive"] is None else "")
+                if prev_lines["preventive"] is None:
+                    prev_lines["preventive"] = line
+                    legend_elements.append(line)
         
         # Set limits and labels
         ax.set_yticks([0, 1, 2])
@@ -394,20 +421,51 @@ class MaintenanceOptimizationSimulator:
             ax.set_xticks(range(len(time_labels)))
             ax.set_xticklabels(time_labels)
         
-        # Mark maintenance events
+        # Mark maintenance events with different colors based on type
+        prev_lines = {"corrective": None, "preventive": None}
+        
         for event in maintenance_events:
+            event_time, event_type = event
             if simulation_steps > 50:
                 # Find nearest sample point
-                event_idx = np.abs(sample_points - event).argmin()
-                ax.axvline(x=event_idx, color='blue', linestyle='--', alpha=0.7)
+                event_idx = np.abs(sample_points - event_time).argmin()
+                
+                if event_type == "corrective":
+                    line = ax.axvline(x=event_idx, color='darkred', linestyle='--', alpha=0.7,
+                                     label='Corrective' if prev_lines["corrective"] is None else "")
+                    if prev_lines["corrective"] is None:
+                        prev_lines["corrective"] = line
+                else:  # preventive
+                    line = ax.axvline(x=event_idx, color='blue', linestyle='--', alpha=0.7,
+                                     label='Preventive' if prev_lines["preventive"] is None else "")
+                    if prev_lines["preventive"] is None:
+                        prev_lines["preventive"] = line
             else:
-                ax.axvline(x=event, color='blue', linestyle='--', alpha=0.7)
+                if event_type == "corrective":
+                    line = ax.axvline(x=event_time, color='darkred', linestyle='--', alpha=0.7,
+                                     label='Corrective' if prev_lines["corrective"] is None else "")
+                    if prev_lines["corrective"] is None:
+                        prev_lines["corrective"] = line
+                else:  # preventive
+                    line = ax.axvline(x=event_time, color='blue', linestyle='--', alpha=0.7,
+                                     label='Preventive' if prev_lines["preventive"] is None else "")
+                    if prev_lines["preventive"] is None:
+                        prev_lines["preventive"] = line
         
-        # Add annotation for maintenance events
-        if maintenance_events:
-            ax.text(0.98, 0.02, 'Blue lines: Maintenance events', transform=ax.transAxes, 
-                   color='blue', fontsize=10, ha='right', va='bottom', 
-                   bbox=dict(facecolor='white', alpha=0.7))
+        # Add legend for maintenance types
+        if prev_lines["corrective"] is not None or prev_lines["preventive"] is not None:
+            handles = []
+            labels = []
+            
+            if prev_lines["corrective"] is not None:
+                handles.append(prev_lines["corrective"])
+                labels.append("Corrective Maintenance")
+            
+            if prev_lines["preventive"] is not None:
+                handles.append(prev_lines["preventive"])
+                labels.append("Preventive Maintenance")
+            
+            ax.legend(handles=handles, labels=labels, loc='upper right')
         
         # Adjust layout
         fig.tight_layout()
@@ -421,7 +479,7 @@ class MaintenanceOptimizationSimulator:
         return img_str
 
     def generate_cost_analysis_plot(self):
-        """Generate cost analysis visualization"""
+        """Generate cost analysis visualization with colored maintenance events"""
         if not self.simulation_results:
             return None
             
@@ -456,15 +514,35 @@ class MaintenanceOptimizationSimulator:
                 bottom=maintenance_costs + transfer_costs + component_costs + shortage_costs, 
                 label='Excess')
         
-        # Mark maintenance events
-        for event in maintenance_events:
-            ax1.axvline(x=event, color='black', linestyle='--', alpha=0.3)
+        # Mark maintenance events with different colors
+        prev_lines = {"corrective": None, "preventive": None}
+        
+        for event_time, event_type in maintenance_events:
+            if event_type == "corrective":
+                line = ax1.axvline(x=event_time, color='darkred', linestyle='--', alpha=0.7,
+                                  label='Corrective Maintenance' if prev_lines["corrective"] is None else "")
+                if prev_lines["corrective"] is None:
+                    prev_lines["corrective"] = line
+            else:  # preventive
+                line = ax1.axvline(x=event_time, color='blue', linestyle='--', alpha=0.7,
+                                  label='Preventive Maintenance' if prev_lines["preventive"] is None else "")
+                if prev_lines["preventive"] is None:
+                    prev_lines["preventive"] = line
         
         # Set labels and title
         ax1.set_xlabel('Time Step')
         ax1.set_ylabel('Cost')
         ax1.set_title('Cost Breakdown by Type')
-        ax1.legend()
+        
+        # Combine cost component legend with maintenance event legend
+        handles, labels = ax1.get_legend_handles_labels()
+        if prev_lines["corrective"] is not None:
+            handles.append(prev_lines["corrective"])
+            labels.append("Corrective Maintenance")
+        if prev_lines["preventive"] is not None:
+            handles.append(prev_lines["preventive"])
+            labels.append("Preventive Maintenance")
+        ax1.legend(handles=handles, labels=labels)
         
         # 2. Cumulative cost plot
         ax2 = fig.add_subplot(212)
@@ -472,9 +550,27 @@ class MaintenanceOptimizationSimulator:
         # Plot cumulative cost
         ax2.plot(time_points, costs['cumulative'], 'b-', linewidth=2)
         
-        # Mark maintenance events
-        for event in maintenance_events:
-            ax2.axvline(x=event, color='r', linestyle='--', alpha=0.5)
+        # Mark maintenance events with different colors
+        for event_time, event_type in maintenance_events:
+            if event_type == "corrective":
+                ax2.axvline(x=event_time, color='darkred', linestyle='--', alpha=0.7)
+            else:  # preventive
+                ax2.axvline(x=event_time, color='blue', linestyle='--', alpha=0.7)
+        
+        # Add small legend for maintenance events
+        if prev_lines["corrective"] is not None or prev_lines["preventive"] is not None:
+            handles = []
+            labels = []
+            
+            if prev_lines["corrective"] is not None:
+                handles.append(plt.Line2D([0], [0], color='darkred', linestyle='--'))
+                labels.append("Corrective Maintenance")
+            
+            if prev_lines["preventive"] is not None:
+                handles.append(plt.Line2D([0], [0], color='blue', linestyle='--'))
+                labels.append("Preventive Maintenance")
+            
+            ax2.legend(handles=handles, labels=labels, loc='upper left')
         
         # Set labels and title
         ax2.set_xlabel('Time Step')
@@ -536,11 +632,6 @@ class MaintenanceOptimizationSimulator:
         total = sum(sizes)
         percentages = [100 * s / total for s in sizes]
         
-        # Create customized labels to avoid overlapping
-        # Just use percentages without text labels on the pie
-        # The labels will be in the legend instead
-        autopct_labels = ['%1.1f%%' % p for p in percentages]
-        
         # Create pie chart
         colors = ['green', 'gold', 'red']
         wedges, texts, autotexts = ax.pie(sizes, colors=colors, 
@@ -548,7 +639,7 @@ class MaintenanceOptimizationSimulator:
                                          textprops={'fontsize': 12},
                                          startangle=90)
         
-        # Customize text appearance to avoid overlapping
+        # Customize text appearance
         for text in autotexts:
             text.set_fontsize(12)
             text.set_fontweight('bold')
@@ -579,34 +670,126 @@ class MaintenanceOptimizationSimulator:
         return img_str
 
     def generate_maintenance_rules_plot(self):
-        """Generate maintenance rules plot"""
+        """Generate a Markov chain visualization of maintenance rules"""
         # Create figure
-        fig = Figure(figsize=(10, 4), dpi=100)
+        fig = Figure(figsize=(12, 7), dpi=100)
         ax = fig.add_subplot(111)
         
-        # Draw the state machine
-        ax.plot([0, 1], [0, 1], 'go-', markersize=15, label='Green')
-        ax.plot([1, 2], [1, 1], 'yo-', markersize=15, label='Yellow')
-        ax.plot([2, 3], [1, 0], 'ro-', markersize=15, label='Red')
-        ax.plot([3, 0], [0, 0], 'ko--', alpha=0.5)
+        # Define state positions for a more complex Markov chain
+        states = {
+            'G': (0, 0),           # Green state (perfect condition)
+            'Y1': (2, 1),          # Yellow state with counter 1
+            'Y2': (3.5, 1),        # Yellow state with counter 2
+            'Y3': (5, 1),          # Yellow state with counter 3
+            'Y4': (6.5, 1),        # Yellow state with counter 4
+            'YT': (8, 1),          # Yellow state at threshold (counter = threshold)
+            'R': (8, -1),          # Red state (failure)
+            'M': (4, -1.5)         # Maintenance state
+        }
         
-        # Add annotations
-        ax.annotate('Start', xy=(0, 0), xytext=(0, -0.2), ha='center')
-        ax.annotate('Degradation', xy=(0.5, 0.5), xytext=(0.5, 0.7), ha='center')
-        ax.annotate(f'Consecutive Yellow\nCount >= {self.yellow_threshold}', xy=(1.5, 1), xytext=(1.5, 1.2), ha='center')
-        ax.annotate('Component\nFailure', xy=(2.5, 0.5), xytext=(2.5, 0.7), ha='center')
-        ax.annotate('Maintenance\n(Reset All Components)', xy=(1.5, 0), xytext=(1.5, -0.2), ha='center')
+        # Define state colors
+        colors = {
+            'G': 'green',
+            'Y1': 'gold',
+            'Y2': 'gold',
+            'Y3': 'gold',
+            'Y4': 'gold',
+            'YT': 'darkorange',
+            'R': 'red',
+            'M': 'lightblue'
+        }
+        
+        # Get maintenance component strategy description
+        if self.maintenance_components == 'all':
+            components_desc = f"All Components ({self.C})"
+        elif self.maintenance_components == 'degraded_only':
+            components_desc = "Only Degraded Components"
+        elif self.maintenance_components == 'custom':
+            components_desc = f"Custom Number: {self.custom_components_number}"
+        else:
+            components_desc = f"All Components ({self.C})"
+        
+        # Draw the states as nodes
+        for state, pos in states.items():
+            color = colors[state]
+            ax.plot(pos[0], pos[1], 'o', markersize=20, color=color)
+            
+        # Draw the transitions between states
+        # Normal transitions (without maintenance)
+        ax.annotate("", xy=states['G'], xytext=states['Y1'], 
+                arrowprops=dict(arrowstyle="->", color="green", lw=1.5))
+        
+        ax.annotate("", xy=states['Y1'], xytext=states['Y2'], 
+                arrowprops=dict(arrowstyle="->", color="green", lw=1.5))
+        
+        ax.annotate("", xy=states['Y2'], xytext=states['Y3'], 
+                arrowprops=dict(arrowstyle="->", color="green", lw=1.5))
+        
+        ax.annotate("", xy=states['Y3'], xytext=states['Y4'], 
+                arrowprops=dict(arrowstyle="->", color="green", lw=1.5))
+        
+        ax.annotate("", xy=states['Y4'], xytext=states['YT'], 
+                arrowprops=dict(arrowstyle="->", color="green", lw=1.5))
+        
+        # Failure transition
+        ax.annotate("", xy=states['YT'], xytext=states['R'], 
+                arrowprops=dict(arrowstyle="->", color="red", lw=1.5))
+        
+        # Maintenance transitions
+        ax.annotate("", xy=states['YT'], xytext=states['M'], 
+                arrowprops=dict(arrowstyle="->", color="blue", lw=1.5))
+        
+        ax.annotate("", xy=states['R'], xytext=states['M'], 
+                arrowprops=dict(arrowstyle="->", color="darkred", lw=1.5))
+        
+        # Reset to green after maintenance
+        ax.annotate("", xy=states['M'], xytext=states['G'], 
+                arrowprops=dict(arrowstyle="->", color="black", lw=1.5))
+        
+        # Self-transitions (staying in the same state)
+        ax.annotate("", xy=(states['G'][0]-0.2, states['G'][1]+0.2), 
+                xytext=(states['G'][0]-0.2, states['G'][1]-0.2),
+                arrowprops=dict(arrowstyle="->", color="green", lw=1.5, connectionstyle="arc3,rad=0.8"))
+        
+        # Add labels for the states
+        ax.text(states['G'][0]-0.3, states['G'][1], "Green\n(Perfect)", fontsize=10, ha='right', va='center')
+        ax.text(states['Y1'][0], states['Y1'][1]+0.3, "Yellow\n(Counter=1)", fontsize=10, ha='center', va='bottom')
+        ax.text(states['Y2'][0], states['Y2'][1]+0.3, "Yellow\n(Counter=2)", fontsize=10, ha='center', va='bottom')
+        ax.text(states['Y3'][0], states['Y3'][1]+0.3, "Yellow\n(Counter=3)", fontsize=10, ha='center', va='bottom')
+        ax.text(states['Y4'][0], states['Y4'][1]+0.3, "Yellow\n(Counter=4)", fontsize=10, ha='center', va='bottom')
+        ax.text(states['YT'][0], states['YT'][1]+0.3, f"Yellow\n(Counter={self.yellow_threshold})", fontsize=10, ha='center', va='bottom')
+        ax.text(states['R'][0]+0.3, states['R'][1], "Red\n(Failure)", fontsize=10, ha='left', va='center')
+        ax.text(states['M'][0], states['M'][1]-0.3, f"Maintenance\n({components_desc})", fontsize=10, ha='center', va='top')
+        
+        # Add cost annotations
+        ax.text(5.5, -0.5, f"Preventive Cost: {self.c1}", fontsize=9, 
+            bbox=dict(boxstyle="round,pad=0.3", fc="lightblue", alpha=0.7))
+        ax.text(6.5, -0.8, f"Corrective Cost: {self.c2}", fontsize=9, 
+            bbox=dict(boxstyle="round,pad=0.3", fc="lightcoral", alpha=0.7))
+        
+        # Add probability labels for transitions
+        degradation_prob = (1-self.alpha)*100
+        ax.text(1.0, 0.7, f"Degradation: {degradation_prob:.1f}%", fontsize=8)
+        ax.text(states['G'][0]-0.7, states['G'][1], f"No Change: {self.alpha*100:.1f}%", fontsize=8)
+        
+        # Add title and adjust layout
+        ax.set_title("Markov Chain Representation of Maintenance Policy", fontsize=14, pad=20)
         
         # Set limits and remove axes
-        ax.set_xlim(-0.5, 3.5)
-        ax.set_ylim(-0.5, 1.5)
+        ax.set_xlim(-1, 9)
+        ax.set_ylim(-2, 2)
         ax.axis('off')
         
         # Add legend
-        ax.legend(loc='upper right')
-        
-        # Add title
-        ax.set_title('System State Transitions and Maintenance Policy')
+        from matplotlib.patches import Patch
+        legend_elements = [
+            Patch(facecolor='green', label='Perfect Condition'),
+            Patch(facecolor='gold', label='Degradation'),
+            Patch(facecolor='darkorange', label='Threshold Reached'),
+            Patch(facecolor='red', label='Failure'),
+            Patch(facecolor='lightblue', label='Maintenance')
+        ]
+        ax.legend(handles=legend_elements, loc='upper left', bbox_to_anchor=(0.02, 0.98))
         
         # Adjust layout
         fig.tight_layout()
@@ -618,7 +801,7 @@ class MaintenanceOptimizationSimulator:
         img_str = base64.b64encode(buf.getvalue()).decode('utf-8')
         
         return img_str
-
+        
 # Flask routes
 @app.route('/')
 def index():
@@ -657,6 +840,11 @@ def component_params():
     
     return jsonify({'status': 'success'})
 
+# app.py dosyasına aşağıdaki import satırını ekleyelim:
+# İmport satırları kısmına eklenecek:
+import optimal_policy
+
+# Update only the calculate_policy route function in app.py
 @app.route('/calculate_policy', methods=['POST'])
 def calculate_policy():
     # Get parameters from session
@@ -668,6 +856,71 @@ def calculate_policy():
     # Generate maintenance rules plot
     policy_plot = simulator.generate_maintenance_rules_plot()
     
+    # Get the maintenance components description
+    if simulator.maintenance_components == 'all':
+        components_desc = f"All components ({simulator.C} total)"
+    elif simulator.maintenance_components == 'degraded_only':
+        components_desc = "Only degraded components"
+    elif simulator.maintenance_components == 'custom':
+        components_desc = f"{simulator.custom_components_number} components (specified)"
+    else:
+        components_desc = f"All components ({simulator.C} total)"
+    
+    # Optimal policy calculation with yellow_threshold constraint
+    try:
+        optimal_result = optimal_policy.calculate_optimal_policy(params)
+        
+        if optimal_result['success']:
+            policy_info = optimal_result['policy']
+            
+            # Get optimal intervention points and component counts
+            yellow_interventions = policy_info['yellow_interventions']
+            red_interventions = policy_info['red_interventions']
+            
+            # Get optimal policy description
+            policy_description = policy_info['policy_description']
+            
+            # Store optimal policy information in session
+            session['optimal_policy'] = optimal_result
+            
+            # Format intervention information as text
+            intervention_text = ""
+            
+            if yellow_interventions:
+                intervention_text += "Preventive (Yellow signal) interventions:\n"
+                for intervention in yellow_interventions:
+                    intervention_text += f"  - When counter reaches {intervention['counter']}, intervene with {intervention['components']} components (probability: {intervention['probability']:.3f})\n"
+            
+            if red_interventions:
+                intervention_text += "\nCorrective (Red signal) interventions:\n"
+                for intervention in red_interventions:
+                    intervention_text += f"  - When counter reaches {intervention['counter']}, intervene with {intervention['components']} components (probability: {intervention['probability']:.3f})\n"
+            
+            # Add optimal policy information to rules_text
+            optimal_info = f"""
+Optimal Maintenance Policy:
+------------------------
+{policy_description}
+
+{intervention_text}
+Red state probability: {policy_info['down_probability']:.3f}
+Preventive maintenance probability: {policy_info['preventive_probability']:.3f}
+Optimal cost: {policy_info['objective_value']:.2f}
+"""
+        else:
+            optimal_info = f"""
+Optimal Policy Could Not Be Calculated:
+------------------------------------
+Error: {optimal_result['error']}
+"""
+    except Exception as e:
+        optimal_info = f"""
+Optimal Policy Could Not Be Calculated:
+------------------------------------
+Error: {str(e)}
+Note: This calculation requires the gurobipy library. Please install it with 'pip install gurobipy'.
+"""
+        
     # Get maintenance rules text
     rules_text = f"""
 The system follows these maintenance rules:
@@ -675,8 +928,8 @@ The system follows these maintenance rules:
 1. RED SIGNAL (Failure Detection):
    - If ANY component reaches its maximum deterioration level (K={simulator.K}), 
      the system emits a RED signal.
-   - Immediate maintenance is performed, restoring all components to perfect condition.
-   - All components ({simulator.C} total) are taken for the maintenance operation.
+   - Immediate corrective maintenance is performed, restoring all components to perfect condition.
+   - {components_desc} are taken for the maintenance operation.
 
 2. YELLOW SIGNAL (Degradation Detection):
    - If ANY component is degraded but none have failed, the system emits a YELLOW signal.
@@ -687,6 +940,11 @@ The system follows these maintenance rules:
 3. GREEN SIGNAL (Perfect Condition):
    - When ALL components are in perfect condition, the system emits a GREEN signal.
    - No maintenance action is taken in this state.
+
+Maintenance Strategy:
+- Components selected for maintenance: {components_desc}
+- NOTE: After ANY maintenance operation (preventive or corrective), ALL components are ALWAYS restored to perfect condition (state 0).
+- The component selection only affects the cost calculation, not the resulting component states.
 
 Cost Parameters:
 - Preventive Maintenance (Yellow-triggered): {simulator.c1} units
@@ -699,6 +957,8 @@ Cost Parameters:
 Degradation Model:
 - Each component has a {(1-simulator.alpha)*100:.1f}% chance to degrade by one level each time step.
 - Components degrade independently of each other.
+
+{optimal_info}
 """
     
     # Store in session that policy was calculated
@@ -714,6 +974,10 @@ Degradation Model:
 def run_simulation():
     # Get parameters from session
     params = session.get('params', {})
+    
+    # Ensure we have the maintenance components parameter
+    if 'maintenance_components' not in params:
+        params['maintenance_components'] = 'all'
     
     # Create simulator instance
     simulator = MaintenanceOptimizationSimulator(params)
@@ -777,6 +1041,16 @@ def policy():
     # Generate maintenance rules plot
     policy_plot = simulator.generate_maintenance_rules_plot()
     
+    # Get the maintenance components description
+    if simulator.maintenance_components == 'all':
+        components_desc = f"All components ({simulator.C} total)"
+    elif simulator.maintenance_components == 'degraded_only':
+        components_desc = "Only degraded components"
+    elif simulator.maintenance_components == 'custom':
+        components_desc = f"{simulator.custom_components_number} components (specified)"
+    else:
+        components_desc = f"All components ({simulator.C} total)"
+    
     # Get maintenance rules text
     rules_text = f"""
 The system follows these maintenance rules:
@@ -784,8 +1058,8 @@ The system follows these maintenance rules:
 1. RED SIGNAL (Failure Detection):
    - If ANY component reaches its maximum deterioration level (K={simulator.K}), 
      the system emits a RED signal.
-   - Immediate maintenance is performed, restoring all components to perfect condition.
-   - All components ({simulator.C} total) are taken for the maintenance operation.
+   - Immediate corrective maintenance is performed, restoring all components to perfect condition.
+   - {components_desc} are taken for the maintenance operation.
 
 2. YELLOW SIGNAL (Degradation Detection):
    - If ANY component is degraded but none have failed, the system emits a YELLOW signal.
@@ -796,6 +1070,11 @@ The system follows these maintenance rules:
 3. GREEN SIGNAL (Perfect Condition):
    - When ALL components are in perfect condition, the system emits a GREEN signal.
    - No maintenance action is taken in this state.
+
+Maintenance Strategy:
+- Components selected for maintenance: {components_desc}
+- NOTE: After ANY maintenance operation (preventive or corrective), ALL components are ALWAYS restored to perfect condition (state 0).
+- The component selection only affects the cost calculation, not the resulting component states.
 
 Cost Parameters:
 - Preventive Maintenance (Yellow-triggered): {simulator.c1} units

@@ -12,40 +12,79 @@
             <div class="card-header">
                 <ul class="nav nav-tabs card-header-tabs" role="tablist">
                     <li class="nav-item">
-                        <a class="nav-link active" id="system-tab" data-bs-toggle="tab" href="#system" role="tab">System Parameters</a>
+                        <a class="nav-link active" id="simulation-tab" data-bs-toggle="tab" href="#simulation" role="tab">Simulation Parameters</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" id="policy-tab" data-bs-toggle="tab" href="#policy" role="tab">Policy Parameters</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" id="component-tab" data-bs-toggle="tab" href="#component" role="tab">Component Parameters</a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" id="cost-tab" data-bs-toggle="tab" href="#cost" role="tab">Cost Parameters</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" id="components-tab" data-bs-toggle="tab" href="#components" role="tab">Components</a>
+                        <a class="nav-link" id="components-tab" data-bs-toggle="tab" href="#components" role="tab">Individual Components</a>
                     </li>
                 </ul>
             </div>
             <div class="card-body">
                 <div class="tab-content">
-                    <!-- System Parameters Tab -->
-                    <div class="tab-pane fade show active" id="system" role="tabpanel">
-                        <form id="system-form">
+                    <!-- Simulation Parameters Tab -->
+                    <div class="tab-pane fade show active" id="simulation" role="tabpanel">
+                        <form id="simulation-form">
+                            <div class="mb-3">
+                                <label for="simulation_steps" class="form-label">Simulation Steps:</label>
+                                <input type="number" class="form-control" id="simulation_steps" name="simulation_steps" min="50" max="1000" step="50" value="100">
+                                <small class="form-text text-muted">Number of time steps to simulate</small>
+                            </div>
+                        </form>
+                    </div>
+                    
+                    <!-- Policy Parameters Tab -->
+                    <div class="tab-pane fade" id="policy" role="tabpanel">
+                        <form id="policy-form">
+                            <div class="mb-3">
+                                <label for="yellow_threshold" class="form-label">Yellow Signal Threshold:</label>
+                                <input type="number" class="form-control" id="yellow_threshold" name="yellow_threshold" min="1" max="20" value="5">
+                                <small class="form-text text-muted">Number of consecutive yellow signals before preventive maintenance</small>
+                            </div>
+                            <div class="mb-3">
+                                <label for="maintenance_components" class="form-label">Components to Maintain:</label>
+                                <select class="form-control" id="maintenance_components" name="maintenance_components">
+                                    <option value="all" selected>All Components (Default)</option>
+                                    <option value="degraded_only">Only Degraded Components</option>
+                                    <option value="custom">Custom Number</option>
+                                </select>
+                                <small class="form-text text-muted">This selection only affects cost calculation. After any maintenance, ALL components will be reset to perfect condition.</small>
+                            </div>
+                            <div class="mb-3" id="custom_components_div" style="display: none;">
+                                <label for="custom_components_number" class="form-label">Number of Components:</label>
+                                <input type="number" class="form-control" id="custom_components_number" name="custom_components_number" min="1" max="10" value="1">
+                            </div>
+                            <div class="alert alert-info">
+                                <strong>Note:</strong> After ANY maintenance operation, ALL components are ALWAYS restored to perfect condition. The selection above only impacts the cost calculation.
+                            </div>
+                        </form>
+                    </div>
+                    
+                    <!-- Component Parameters Tab -->
+                    <div class="tab-pane fade" id="component" role="tabpanel">
+                        <form id="component-form">
                             <div class="mb-3">
                                 <label for="C" class="form-label">Number of Components (C):</label>
                                 <input type="number" class="form-control" id="C" name="C" min="1" max="10" value="3">
+                                <small class="form-text text-muted">Total components in the system</small>
                             </div>
                             <div class="mb-3">
                                 <label for="K" class="form-label">Maximum Deterioration Level (K):</label>
                                 <input type="number" class="form-control" id="K" name="K" min="2" max="15" value="3">
+                                <small class="form-text text-muted">Deterioration level at which a component fails</small>
                             </div>
                             <div class="mb-3">
                                 <label for="alpha" class="form-label">Degradation Probability (1-α):</label>
                                 <input type="number" class="form-control" id="alpha" name="alpha" min="0.05" max="0.95" step="0.05" value="0.25">
-                            </div>
-                            <div class="mb-3">
-                                <label for="yellow_threshold" class="form-label">Yellow Signal Threshold:</label>
-                                <input type="number" class="form-control" id="yellow_threshold" name="yellow_threshold" min="1" max="20" value="5">
-                            </div>
-                            <div class="mb-3">
-                                <label for="simulation_steps" class="form-label">Simulation Steps:</label>
-                                <input type="number" class="form-control" id="simulation_steps" name="simulation_steps" min="50" max="1000" step="50" value="100">
+                                <small class="form-text text-muted">Probability of a component degrading by one level in each time step</small>
                             </div>
                         </form>
                     </div>
@@ -56,34 +95,40 @@
                             <div class="mb-3">
                                 <label for="c1" class="form-label">Preventive Maintenance Cost (c₁):</label>
                                 <input type="number" class="form-control" id="c1" name="c1" min="50" max="500" step="10" value="100">
+                                <small class="form-text text-muted">Fixed cost for preventive maintenance operations</small>
                             </div>
                             <div class="mb-3">
                                 <label for="c2" class="form-label">Corrective Maintenance Cost (c₂):</label>
                                 <input type="number" class="form-control" id="c2" name="c2" min="100" max="1000" step="10" value="200">
+                                <small class="form-text text-muted">Fixed cost for corrective maintenance operations</small>
                             </div>
                             <div class="mb-3">
                                 <label for="ct" class="form-label">Transfer Cost per Component (cₜ):</label>
                                 <input type="number" class="form-control" id="ct" name="ct" min="10" max="100" step="5" value="30">
+                                <small class="form-text text-muted">Cost to transfer each component for maintenance</small>
                             </div>
                             <div class="mb-3">
                                 <label for="cr" class="form-label">Replacement Cost per Component (cᵣ):</label>
                                 <input type="number" class="form-control" id="cr" name="cr" min="20" max="200" step="5" value="50">
+                                <small class="form-text text-muted">Cost to replace each degraded component</small>
                             </div>
                             <div class="mb-3">
                                 <label for="cs" class="form-label">Shortage Cost per Component (cₛ):</label>
                                 <input type="number" class="form-control" id="cs" name="cs" min="20" max="200" step="5" value="60">
+                                <small class="form-text text-muted">Penalty cost when fewer components are maintained than needed</small>
                             </div>
                             <div class="mb-3">
                                 <label for="ce" class="form-label">Excess Cost per Component (cₑ):</label>
                                 <input type="number" class="form-control" id="ce" name="ce" min="10" max="100" step="5" value="30">
+                                <small class="form-text text-muted">Penalty cost when more components are maintained than needed</small>
                             </div>
                         </form>
                     </div>
                     
-                    <!-- Components Tab -->
+                    <!-- Individual Components Tab -->
                     <div class="tab-pane fade" id="components" role="tabpanel">
                         <div class="alert alert-info mb-3">
-                            <strong>Note:</strong> Apply system parameters first to configure components.
+                            <strong>Note:</strong> Apply system parameters first to configure individual components.
                         </div>
                         <div id="component-params-container">
                             <!-- Component params will be dynamically inserted here -->
@@ -96,7 +141,7 @@
             </div>
             <div class="card-footer">
                 <div class="d-grid gap-2">
-                    <button class="btn btn-primary" id="save-parameters">Save Parameters</button>
+                    <button class="btn btn-primary" id="save-parameters">Save All Parameters</button>
                 </div>
             </div>
         </div>
@@ -192,6 +237,15 @@
         // Global variables
         let componentParams = [];
         
+        // Toggle custom components number field
+        $('#maintenance_components').change(function() {
+            if ($(this).val() === 'custom') {
+                $('#custom_components_div').show();
+            } else {
+                $('#custom_components_div').hide();
+            }
+        });
+        
         // Apply system parameters button
         $('#apply-system-params').click(function() {
             const systemParams = getSystemParams();
@@ -217,6 +271,33 @@
         $('#reset-simulation').click(function() {
             resetSimulation();
         });
+        
+        // Helper function to get all parameters
+        function getAllParams() {
+            return {
+                // Simulation parameters
+                simulation_steps: parseInt($('#simulation_steps').val()),
+                
+                // Policy parameters
+                yellow_threshold: parseInt($('#yellow_threshold').val()),
+                maintenance_components: $('#maintenance_components').val(),
+                custom_components_number: $('#maintenance_components').val() === 'custom' ? 
+                                          parseInt($('#custom_components_number').val()) : 0,
+                
+                // Component parameters
+                C: parseInt($('#C').val()),
+                K: parseInt($('#K').val()),
+                alpha: parseFloat($('#alpha').val()),
+                
+                // Cost parameters
+                c1: parseFloat($('#c1').val()),
+                c2: parseFloat($('#c2').val()),
+                ct: parseFloat($('#ct').val()),
+                cr: parseFloat($('#cr').val()),
+                cs: parseFloat($('#cs').val()),
+                ce: parseFloat($('#ce').val())
+            };
+        }
         
         // Helper function to get system parameters
         function getSystemParams() {
@@ -385,22 +466,20 @@
         function saveParameters() {
             updateStatus("Saving parameters...", "primary");
             
-            const systemParams = getSystemParams();
-            const costParams = getCostParams();
+            // Get all parameters
+            const allParams = getAllParams();
             
-            // Create request data
-            const requestData = {
-                ...systemParams,
-                ...costParams,
-                component_params: componentParams
-            };
+            // Add component parameters
+            allParams.component_params = componentParams;
+            
+            console.log("Saving parameters:", allParams);
             
             // Send request to server
             $.ajax({
                 url: '/setup',
                 type: 'POST',
                 contentType: 'application/json',
-                data: JSON.stringify(requestData),
+                data: JSON.stringify(allParams),
                 success: function(response) {
                     if (response.status === 'success') {
                         componentParams = response.component_params;
