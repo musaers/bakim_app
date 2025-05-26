@@ -338,8 +338,4 @@ The optimization problem ensures that maintenance interventions respect the user
 - [ ] Export functionality for simulation results
 - [ ] Batch processing for parameter sensitivity analysis
 
----
 
-**Created by**: Maintenance Optimization Team  
-**Last Updated**: December 2024  
-**Version**: 1.0.0
