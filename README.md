@@ -7,7 +7,6 @@ A comprehensive web-based application for simulating and optimizing maintenance 
 - **Interactive Web Interface**: User-friendly setup and configuration
 - **Signal-Based Maintenance**: Green/Yellow/Red signal system for maintenance decisions
 - **Optimal Policy Calculation**: Mathematical optimization using linear programming
-- **Real-time Simulation**: Monte Carlo simulation of maintenance strategies
 - **Rich Visualizations**: Component states, degradation heatmaps, cost analysis
 - **Flexible Configuration**: Customizable component parameters and cost structures
 
@@ -94,10 +93,8 @@ maintenance-optimization-system/
 ### 4. Calculate Optimal Policy
 Generate mathematically optimal maintenance strategy using linear programming
 
-### 5. Run Simulation
-Execute Monte Carlo simulation to analyze policy performance
 
-### 6. Analyze Results
+### 5. Analyze Results
 View comprehensive visualizations and performance metrics
 
 ## 📊 Visualizations
